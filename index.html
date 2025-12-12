@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gym Sets and Plates</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body { background: #f6f7f8; }
+    .app-card { border: 0; box-shadow: 0 1px 2px rgba(0,0,0,.06); border-radius: 1rem; }
+    .pill { cursor: pointer; }
+    .sticky-actions {
+      position: sticky;
+      bottom: 0;
+      z-index: 1020;
+      background: rgba(246,247,248,.92);
+      backdrop-filter: blur(6px);
+      border-top: 1px solid rgba(0,0,0,.08);
+    }
+    .table td, .table th { vertical-align: top; }
+    .mono { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <main class="container py-3 pb-5">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div>
+        <h1 class="h4 mb-1">Gym sets and plates</h1>
+        <div class="text-secondary small">Bar, sets, reps, plus plates per side.</div>
+      </div>
+      <span class="badge text-bg-primary rounded-pill">v1</span>
+    </div>
+
+    <section class="card app-card mb-3">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Setup</h2>
+
+        <div class="row g-3">
+          <div class="col-12 col-md-5">
+            <label class="form-label">Bar</label>
+            <div class="d-flex gap-2 flex-wrap" role="group" aria-label="Bar selection">
+              <input class="btn-check" type="radio" name="sex" id="male" value="male" checked>
+              <label class="btn btn-outline-primary rounded-pill pill" for="male">Male (20 kg)</label>
+
+              <input class="btn-check" type="radio" name="sex" id="female" value="female">
+              <label class="btn btn-outline-primary rounded-pill pill" for="female">Female (15 kg)</label>
+            </div>
+            <div class="text-secondary small mt-2">
+              Plates: 1.25, 2.5, 5, 10, 15, 20, 25 (kg)
+            </div>
+          </div>
+
+          <div class="col-12 col-md-7">
+            <label class="form-label">Exercises for this session</label>
+            <div class="d-flex gap-2 flex-wrap">
+              <input class="btn-check ex" type="checkbox" id="exSquat" value="Squat">
+              <label class="btn btn-outline-success rounded-pill pill" for="exSquat">Squat</label>
+
+              <input class="btn-check ex" type="checkbox" id="exBench" value="Bench Press">
+              <label class="btn btn-outline-success rounded-pill pill" for="exBench">Bench Press</label>
+
+              <input class="btn-check ex" type="checkbox" id="exPress" value="Press">
+              <label class="btn btn-outline-success rounded-pill pill" for="exPress">Press</label>
+
+              <input class="btn-check ex" type="checkbox" id="exDeadlift" value="Deadlift">
+              <label class="btn btn-outline-success rounded-pill pill" for="exDeadlift">Deadlift</label>
+            </div>
+            <div class="text-secondary small mt-2">
+              Tick the lifts, then enter your 100% working weight for each.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card app-card mb-3" id="weightsCard">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+          <h2 class="h6 mb-0">Working weights</h2>
+
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-light border text-secondary">100% = bar + plates</span>
+
+            <div class="btn-group" role="group" aria-label="Step size">
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="stepBtn">
+                Step: <span id="stepVal">2.5</span> kg
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="inputs" class="row g-3 mt-1"></div>
+
+        <div id="err" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+
+        <div class="d-grid gap-2 d-sm-flex mt-3">
+          <button id="calcBtn" type="button" class="btn btn-primary btn-lg flex-fill">Calculate</button>
+          <button id="clearBtn" type="button" class="btn btn-outline-secondary btn-lg flex-fill">Clear</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card app-card">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Session plan</h2>
+        <div id="output" class="text-secondary">Pick exercises and press Calculate.</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="sticky-actions py-2">
+    <div class="container">
+      <div class="d-grid gap-2 d-sm-none">
+        <button id="calcBtnSticky" type="button" class="btn btn-primary btn-lg">Calculate</button>
+        <button id="clearBtnSticky" type="button" class="btn btn-outline-secondary btn-lg">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
+
+    const SCHEMES = {
+      "Squat": [
+        { pct: null, reps: 10, label: "Bar" },
+        { pct: 60, reps: 5 },
+        { pct: 70, reps: 5 },
+        { pct: 80, reps: 5 },
+        { pct: 90, reps: 5 },
+        { pct: 100, reps: 5, label: "Working" }
+      ],
+      "Bench Press": [
+        { pct: null, reps: 10, label: "Bar" },
+        { pct: 60, reps: 5 },
+        { pct: 70, reps: 5 },
+        { pct: 80, reps: 5 },
+        { pct: 90, reps: 5 },
+        { pct: 100, reps: 5, label: "Working" }
+      ],
+      "Press": [
+        { pct: null, reps: 10, label: "Bar" },
+        { pct: 60, reps: 5 },
+        { pct: 70, reps: 5 },
+        { pct: 80, reps: 5 },
+        { pct: 90, reps: 5 },
+        { pct: 100, reps: 5, label: "Working" }
+      ],
+      "Deadlift": [
+        { pct: 60, reps: 5 },
+        { pct: 70, reps: 3 },
+        { pct: 80, reps: 2 },
+        { pct: 90, reps: 1 },
+        { pct: 100, reps: 5, label: "Working" }
+      ]
+    };
+
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+    // Step sizes for +/- buttons
+    const STEP_SIZES = [2.5, 1, 0.5];
+    let currentStepIndex = 0;
+
+    function currentStep() {
+      return STEP_SIZES[currentStepIndex];
+    }
+
+    function cycleStep() {
+      currentStepIndex = (currentStepIndex + 1) % STEP_SIZES.length;
+      $("#stepVal").textContent = currentStep();
+    }
+
+    function barWeightKg() {
+      const sex = document.querySelector('input[name="sex"]:checked')?.value || "male";
+      return sex === "female" ? 15 : 20;
+    }
+
+    function roundToNearest(value, step) {
+      return Math.round(value / step) * step;
+    }
+
+    function formatKg(x) {
+      const s = (Math.round(x * 100) / 100).toFixed(2);
+      return s.replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+    }
+
+    function plateBreakdownPerSide(perSide) {
+      let remaining = Math.round(perSide * 100) / 100;
+      const used = [];
+      for (const p of PLATES) {
+        while (remaining + 1e-9 >= p) {
+          used.push(p);
+          remaining = Math.round((remaining - p) * 100) / 100;
+        }
+      }
+      return { used, remaining };
+    }
+
+    function planForTargetTotal(targetTotal, bar) {
+      let loadTotal = targetTotal - bar;
+      if (loadTotal < 0) loadTotal = 0;
+
+      const perSideRaw = loadTotal / 2;
+
+      // Smallest plate step per side is 1.25 kg
+      const perSideRounded = roundToNearest(perSideRaw, 1.25);
+      const totalRounded = bar + perSideRounded * 2;
+
+      const { used, remaining } = plateBreakdownPerSide(perSideRounded);
+      const ok = Math.abs(remaining) < 1e-6;
+
+      return {
+        totalRounded,
+        platesPerSide: ok ? used : [],
+        rounded: Math.abs(totalRounded - targetTotal) > 1e-9
+      };
+    }
+
+    function platesText(plates) {
+      if (!plates.length) return "None";
+      const counts = new Map();
+      for (const p of plates) counts.set(p, (counts.get(p) || 0) + 1);
+      const parts = Array.from(counts.entries())
+        .sort((a, b) => b[0] - a[0])
+        .map(([p, c]) => c === 1 ? `${formatKg(p)}` : `${formatKg(p)}×${c}`);
+      return parts.join(" + ");
+    }
+
+    function selectedExercises() {
+      return $$(".ex:checked").map(x => x.value);
+    }
+
+    function showErr(msg) {
+      const box = $("#err");
+      if (!msg) {
+        box.classList.add("d-none");
+        box.textContent = "";
+        return;
+      }
+      box.textContent = msg;
+      box.classList.remove("d-none");
+    }
+
+    function bumpInput(inputEl, delta) {
+      const min = Number(inputEl.min ?? 0) || 0;
+      const step = currentStep();
+      const raw = Number(inputEl.value);
+      const val = Number.isFinite(raw) ? raw : 0;
+      const next = Math.max(min, Math.round((val + delta) * 100) / 100);
+      // Snap to step for nice values
+      const snapped = roundToNearest(next, step);
+      inputEl.value = formatKg(Math.max(min, snapped));
+      inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
+    function renderInputs() {
+      const box = $("#inputs");
+      box.innerHTML = "";
+      const exs = selectedExercises();
+
+      if (!exs.length) {
+        box.innerHTML = `<div class="col-12 text-secondary">No exercises picked.</div>`;
+        return;
+      }
+
+      for (const ex of exs) {
+        const id = `ww_${ex.replace(/\s+/g, "_")}`;
+
+        const col = document.createElement("div");
+        col.className = "col-12";
+        col.innerHTML = `
+          <label class="form-label" for="${id}">${ex} 100% working weight (kg)</label>
+
+          <div class="input-group input-group-lg">
+            <button class="btn btn-outline-secondary" type="button" data-bump="-1" aria-label="Decrease ${ex}">-</button>
+            <input class="form-control" id="${id}" type="number" inputmode="decimal" min="0" step="0.5" placeholder="e.g. 100" />
+            <button class="btn btn-outline-secondary" type="button" data-bump="1" aria-label="Increase ${ex}">+</button>
+          </div>
+
+          <div class="small text-secondary mt-1">Use +/- to change by <span class="fw-semibold">${formatKg(currentStep())}</span> kg.</div>
+        `;
+
+        box.appendChild(col);
+
+        // Wire up bump buttons for this row
+        const input = col.querySelector("input");
+        const [minusBtn, plusBtn] = col.querySelectorAll("button[data-bump]");
+
+        minusBtn.addEventListener("click", () => bumpInput(input, -currentStep()));
+        plusBtn.addEventListener("click", () => bumpInput(input, currentStep()));
+      }
+
+      // Update the per-row helper text when step changes
+      updateStepHints();
+    }
+
+    function updateStepHints() {
+      $$("#inputs .small span.fw-semibold").forEach(el => {
+        el.textContent = formatKg(currentStep());
+      });
+    }
+
+    function getWorkingWeight(ex) {
+      const id = `ww_${ex.replace(/\s+/g, "_")}`;
+      const val = Number(document.getElementById(id)?.value);
+      return Number.isFinite(val) ? val : NaN;
+    }
+
+    function buildOutput() {
+      showErr("");
+
+      const exs = selectedExercises();
+      if (!exs.length) {
+        showErr("Pick at least one exercise.");
+        $("#output").textContent = "Pick exercises and press Calculate.";
+        return;
+      }
+
+      const bar = barWeightKg();
+      const missing = [];
+      const invalid = [];
+
+      for (const ex of exs) {
+        const ww = getWorkingWeight(ex);
+        if (!Number.isFinite(ww)) missing.push(ex);
+        else if (ww < bar) invalid.push(ex);
+      }
+
+      if (missing.length) {
+        showErr(`Enter a working weight for: ${missing.join(", ")}.`);
+        return;
+      }
+      if (invalid.length) {
+        showErr(`Working weight must be at least the bar weight (${bar} kg) for: ${invalid.join(", ")}.`);
+        return;
+      }
+
+      const out = document.createElement("div");
+
+      for (const ex of exs) {
+        const ww = getWorkingWeight(ex);
+        const scheme = SCHEMES[ex];
+
+        const card = document.createElement("div");
+        card.className = "card border-0 bg-body-tertiary rounded-4 mb-3";
+        card.innerHTML = `
+          <div class="card-body">
+            <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+              <div>
+                <div class="h6 mb-1">${ex}</div>
+                <div class="small text-secondary">Bar: ${bar} kg, 100%: ${formatKg(ww)} kg</div>
+              </div>
+              <span class="badge text-bg-success rounded-pill">Ready</span>
+            </div>
+
+            <div class="table-responsive mt-3">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th style="width: 56px;">Set</th>
+                    <th style="width: 92px;">Target</th>
+                    <th style="width: 70px;">Reps</th>
+                    <th>Load</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        `;
+
+        const tbody = card.querySelector("tbody");
+
+        scheme.forEach((s, idx) => {
+          const label = s.label || (s.pct === null ? "Bar" : `${s.pct}%`);
+          const targetTotal = (s.pct === null) ? bar : (ww * (s.pct / 100));
+          const plan = planForTargetTotal(targetTotal, bar);
+
+          const note = plan.rounded ? ` <span class="text-secondary small">(rounded)</span>` : "";
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="text-secondary">${idx + 1}</td>
+            <td><span class="badge text-bg-light border text-secondary">${label}</span></td>
+            <td class="fw-semibold">${s.reps}</td>
+            <td class="mono">
+              <div class="fw-semibold">${formatKg(plan.totalRounded)} kg${note}</div>
+              <div class="small text-secondary">Per side: ${platesText(plan.platesPerSide)}</div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        out.appendChild(card);
+      }
+
+      $("#output").innerHTML = "";
+      $("#output").appendChild(out);
+
+      $("#output").scrollIntoView({ behaviour: "smooth", block: "start" });
+    }
+
+    function clearAll() {
+      $$(".ex").forEach(cb => cb.checked = false);
+      $("#male").checked = true;
+      $("#inputs").innerHTML = "";
+      $("#output").textContent = "Pick exercises and press Calculate.";
+      showErr("");
+    }
+
+    // Events
+    $$(".ex").forEach(cb => cb.addEventListener("change", () => {
+      showErr("");
+      renderInputs();
+    }));
+
+    $$('input[name="sex"]').forEach(r => r.addEventListener("change", () => {
+      if ($("#output").querySelector("table")) buildOutput();
+    }));
+
+    $("#stepBtn").addEventListener("click", () => {
+      cycleStep();
+      updateStepHints();
+    });
+
+    $("#calcBtn").addEventListener("click", buildOutput);
+    $("#clearBtn").addEventListener("click", clearAll);
+    $("#calcBtnSticky").addEventListener("click", buildOutput);
+    $("#clearBtnSticky").addEventListener("click", clearAll);
+
+    // Initial
+    $("#stepVal").textContent = currentStep();
+    renderInputs();
+  </script>
+</body>
+</html>
