@@ -48,7 +48,7 @@
               <label class="btn btn-outline-primary rounded-pill pill" for="female">Female (15 kg)</label>
             </div>
             <div class="text-secondary small mt-2">
-              Plates: 1.25, 2.5, 5, 10, 15, 20, 25 (kg)
+              Plates: 1.25, 2.5, 5, 10, 15, 20 (kg)
             </div>
           </div>
 
@@ -121,7 +121,7 @@
   </div>
 
   <script>
-    const PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
+    const PLATES = [20, 15, 10, 5, 2.5, 1.25];
 
     const SCHEMES = {
       "Squat": [
@@ -199,8 +199,10 @@
       return { used, remaining };
     }
 
-    function planForTargetTotal(targetTotal, bar) {
-      let loadTotal = targetTotal - bar;
+    function planForTargetTotal(targetTotal, bar, { totalStep = null } = {}) {
+      const desiredTotal = totalStep ? roundToNearest(targetTotal, totalStep) : targetTotal;
+
+      let loadTotal = desiredTotal - bar;
       if (loadTotal < 0) loadTotal = 0;
 
       const perSideRaw = loadTotal / 2;
@@ -377,7 +379,8 @@
         scheme.forEach((s, idx) => {
           const label = s.label || (s.pct === null ? "Bar" : `${s.pct}%`);
           const targetTotal = (s.pct === null) ? bar : (ww * (s.pct / 100));
-          const plan = planForTargetTotal(targetTotal, bar);
+          const isWarmup = s.pct !== null && s.pct !== 100;
+          const plan = planForTargetTotal(targetTotal, bar, { totalStep: isWarmup ? 10 : null });
 
           const note = plan.rounded ? ` <span class="text-secondary small">(rounded)</span>` : "";
           const tr = document.createElement("tr");
